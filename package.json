@@ -1,0 +1,20 @@
+{
+  "name": "erga",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hegemonia's Discord teammate for GitHub",
+  "engines": { "node": ">=24.4.0" },
+  "scripts": {
+    "dev": "tsx --env-file-if-exists=.env.local src/main.ts",
+    "build": "tsc",
+    "start": "node --env-file-if-exists=.env.local dist/main.js",
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/*.test.ts",
+    "register": "tsx --env-file-if-exists=.env.local src/register.ts",
+    "smoke": "tsx --env-file-if-exists=.env.local src/smoke.ts",
+    "doctor": "tsx --env-file-if-exists=.env.local src/doctor.ts"
+  },
+  "dependencies": { "discord.js": "14.27.0", "openai": "7.15.0", "zod": "^4.3.6" },
+  "devDependencies": { "@types/node": "^24.0.0", "tsx": "^4.21.0", "typescript": "^5.9.3" }
+}
