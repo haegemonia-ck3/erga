@@ -9,7 +9,7 @@ export const command = new SlashCommandBuilder().setName('erga').setDescription(
 
 export const noMentions = { parse: [] as [], repliedUser: false };
 export const help = `**Erga · Hegemonia’s GitHub teammate**
-Mention me in an allowed channel, or use **/erga ask**. I’ll open a thread. In threads, **@mention me or reply to one of my messages** to ask a follow-up (reply pings can be off). I read the full thread for context; ordinary team chat does not trigger me.
+Mention me in an allowed channel, or use **/erga ask**. I’ll open a thread. When a thread has only you and me, just send a message. If anyone else joins, **@mention me or reply to one of my messages** (reply pings can be off). I always read the full thread for context.
 
 Try:
 • “What’s blocking the next milestone?”

@@ -8,7 +8,7 @@ import { Changes } from './changes.js';
 import { Agent } from './agent.js';
 import { instructions, toolDefinitions, toolHandler } from './agent-tools.js';
 import { answerMessages, help, noMentions } from './discord-ui.js';
-import { isTriggerCandidate, shouldTrigger, serializeMessage, readFullThread, requestWithContext } from './thread-context.js';
+import { isTriggerCandidate, shouldTrigger, isTwoMemberThread, serializeMessage, readFullThread, requestWithContext } from './thread-context.js';
 
 async function main() {
   const c = config();
@@ -78,10 +78,13 @@ async function main() {
     void (async () => {
       if (!ready || !message.guild || message.author.bot || message.webhookId || !usable(message.channel)) return;
       const channel = message.channel;
-      if (!isTriggerCandidate(message, client.user!.id)) return;
+      if (!channel.isThread() && !isTriggerCandidate(message, client.user!.id)) return;
       let actor = await actorFor(message.guild, channel, message.author.id);
       if (!mayRead(c, actor)) return;
-      if (!await shouldTrigger(message, client.user!.id)) return;
+      if (!await shouldTrigger(message, client.user!.id, channel.isThread() ? () => isTwoMemberThread({
+        count: async () => (await channel.fetch(true)).memberCount,
+        hasMember: async id => !!await channel.members.fetch({ member: id, force: true, cache: false }),
+      }, client.user!.id, message.author.id) : undefined)) return;
       const input = message.content.replace(new RegExp(`<@!?${client.user!.id}>`, 'g'), '').trim();
       if (!input) { await message.reply({ content: help, allowedMentions: noMentions }); return; }
       const thread = channel.isThread() ? channel : await message.startThread({ name: `Erga · ${input.replace(/\s+/g, ' ').slice(0, 85)}`, autoArchiveDuration: 1440 });

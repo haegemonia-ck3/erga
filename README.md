@@ -2,7 +2,7 @@
 
 Hegemonia’s Discord teammate for `haegemonia-ck3/Haegemonia_An_Ancient_Odyssey`.
 
-Mention **@Erga** or use **/erga ask** in an allowed channel. Erga opens a Discord thread, checks GitHub, and answers with links. In a thread, mention Erga or reply directly to one of its messages to trigger a follow-up; disabling the reply ping is fine. Ordinary team discussion does not trigger the bot. Authorized changes are carried out immediately, with one result in the thread and no confirmation buttons.
+Mention **@Erga** or use **/erga ask** in an allowed channel. Erga opens a Discord thread, checks GitHub, and answers with links. In a thread with exactly Erga and the sender as members, ordinary messages trigger a follow-up. With additional members, mention Erga or reply directly to it; disabling the reply ping is fine. Authorized changes are carried out immediately, with one result in the thread and no confirmation buttons.
 
 ## What Erga can do
 
@@ -32,7 +32,7 @@ For a compiled run: `npm run build`, then `npm start`. Keep exactly **one Erga p
 
 Set `DISCORD_TOKEN`, `DISCORD_APPLICATION_ID`, `DISCORD_GUILD_ID` and `DISCORD_CHANNEL_IDS` (comma-separated). In the Developer Portal enable **Message Content Intent**. The bot needs View Channel, Send Messages, Read Message History, Create Public Threads, Send Messages in Threads, Attach Files and Embed Links in the allowed channels. Install with the `bot` and `applications.commands` scopes. Administrator is unnecessary.
 
-Threads inherit channel access from their parent. Direct messages are excluded. Erga responds only to explicit mentions, direct replies to its own messages within a thread, or `/erga ask`. Replies to teammates and other bots do not trigger it. These rules apply to existing threads too, regardless of session history.
+Threads inherit channel access from their parent. Direct messages are excluded. Erga responds to explicit mentions, direct replies to its own messages within a thread, or `/erga ask`. Ordinary messages also trigger when a fresh Discord member count is exactly two and individual membership checks confirm Erga and the sender. Additional members count even if they have not spoken. If they leave and only the pair remains, automatic replies resume. Membership lookup failures fall back to mentions/replies only. Bot messages and webhooks never trigger it. These rules apply to existing threads too, regardless of session history.
 
 Every triggered request fetches the entire readable thread in pages of 100 messages, oldest first, through the triggering message/command. It includes the original starter message when available, intervening team chat, full message text, reply references, embeds and attachment metadata/links. Attachment binaries are not downloaded automatically. The snapshot is included before the agent starts; the agent does not have to request a history tool first. Later messages are considered on the next explicit request. Discord-deleted messages are unavailable. Failed history reads stop the request rather than silently supplying partial history; there is no application history-count or text-truncation limit, although the model/API input limits still apply to very large threads. Transcript messages provide context, not independent authorization to make changes.
 

@@ -15,16 +15,32 @@ export function isTriggerCandidate(message: TriggerMessage, botId: string) {
     !!message.reference?.messageId && message.reference.channelId === message.channelId &&
     message.reference.type === MessageReferenceType.Default);
 }
-export async function shouldTrigger(message: TriggerMessage, botId: string) {
-  if (!isTriggerCandidate(message, botId)) return false;
+export async function shouldTrigger(message: TriggerMessage, botId: string, onlyPair?: () => Promise<boolean>) {
+  if (message.author.bot || message.webhookId) return false;
+  if (!isTriggerCandidate(message, botId)) {
+    return message.channel.isThread() && (message.type === MessageType.Default || message.type === MessageType.Reply) &&
+      !!onlyPair && await onlyPair();
+  }
   if (hasDirectMention(message, botId)) return true;
   try {
     const reference = await message.fetchReference();
-    return reference.channelId === message.channelId && reference.author.id === botId && !reference.webhookId;
+    if (reference.channelId === message.channelId && reference.author.id === botId && !reference.webhookId) return true;
+    return !!onlyPair && await onlyPair();
   } catch (error) {
     // A reply to a deleted message cannot be verified as a reply to Erga.
-    if (error && typeof error === 'object' && 'code' in error && error.code === 10008) return false;
+    if (error && typeof error === 'object' && 'code' in error && error.code === 10008) return !!onlyPair && await onlyPair();
     throw error;
+  }
+}
+
+export async function isTwoMemberThread(source: { count: () => Promise<number | null>; hasMember: (id: string) => Promise<boolean> }, botId: string, userId: string) {
+  try {
+    if (botId === userId || await source.count() !== 2) return false;
+    const members = await Promise.all([source.hasMember(botId), source.hasMember(userId)]);
+    return members.every(Boolean);
+  } catch {
+    // Unknown membership must not turn team discussion into agent requests.
+    return false;
   }
 }
 

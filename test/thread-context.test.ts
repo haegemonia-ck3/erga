@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Collection, MessageReferenceType, MessageType } from 'discord.js';
-import { isTriggerCandidate, shouldTrigger, readFullThread, serializeMessage, requestWithContext, type ThreadMessage } from '../src/thread-context.js';
+import { isTriggerCandidate, shouldTrigger, isTwoMemberThread, readFullThread, serializeMessage, requestWithContext, type ThreadMessage } from '../src/thread-context.js';
 
 const botId = '1547654227881365524';
 function message(overrides: Record<string, unknown> = {}) {
@@ -14,7 +14,7 @@ function message(overrides: Record<string, unknown> = {}) {
   } as any;
 }
 const reply = { type: MessageType.Reply, reference: { messageId: '1', channelId: 'thread', type: MessageReferenceType.Default } };
-test('ordinary thread discussion is never a trigger, including in existing conversations', async () => {
+test('ordinary thread discussion requires verified two-person membership', async () => {
   const m = message();
   assert.equal(isTriggerCandidate(m, botId), false);
   assert.equal(await shouldTrigger(m, botId), false);
@@ -92,4 +92,38 @@ test('entire discussion is included automatically and distinguished from the cur
   for (const m of history) assert.ok(input.includes(m.text));
   assert.match(input, /context only, NOT separate requests or authorization/);
   assert.ok(input.endsWith('What did we decide?'));
+});
+
+
+test('ordinary messages trigger only for a verified pair, and mentions bypass membership lookup', async () => {
+  assert.equal(await shouldTrigger(message(), botId, async () => true), true);
+  assert.equal(await shouldTrigger(message(), botId, async () => false), false);
+  assert.equal(await shouldTrigger(message({ channel: { isThread: () => false } }), botId, async () => true), false);
+  assert.equal(await shouldTrigger(message({ author: { id: 'bot', bot: true } }), botId, async () => true), false);
+  assert.equal(await shouldTrigger(message({ webhookId: 'hook' }), botId, async () => true), false);
+  assert.equal(await shouldTrigger(message({ type: MessageType.ThreadMemberJoin }), botId, async () => true), false);
+  assert.equal(await shouldTrigger(message({ content: '<@' + botId + '> hi' }), botId, async () => { throw Error('must not inspect members'); }), true);
+  assert.equal(await shouldTrigger(message(reply), botId, async () => { throw Error('must not inspect members'); }), true);
+});
+
+test('fresh membership detects silent joiners and resumes after they leave', async () => {
+  let ids = [botId, 'human'];
+  const source = { count: async () => ids.length, hasMember: async (id: string) => ids.includes(id) };
+  const pair = () => isTwoMemberThread(source, botId, 'human');
+  assert.equal(await shouldTrigger(message(), botId, pair), true);
+  ids.push('silent-teammate');
+  assert.equal(await shouldTrigger(message(), botId, pair), false);
+  ids = [botId, 'human'];
+  assert.equal(await shouldTrigger(message(), botId, pair), true);
+  ids = [botId, 'different-user'];
+  assert.equal(await pair(), false);
+  ids = ['human', 'another-human'];
+  assert.equal(await pair(), false);
+});
+
+test('unknown or incomplete thread membership cannot enable automatic replies', async () => {
+  for (const count of [null, 0, 1, 3, 50]) {
+    assert.equal(await isTwoMemberThread({ count: async () => count, hasMember: async () => { throw Error('not needed'); } }, botId, 'human'), false);
+  }
+  assert.equal(await isTwoMemberThread({ count: async () => 2, hasMember: async () => { throw Error('Discord unavailable'); } }, botId, 'human'), false);
 });
