@@ -9,6 +9,7 @@ Mention **@Erga** or use **/erga ask** in an allowed channel. Erga opens a Disco
 - Read and filter issues, comments, labels, milestones, branches and repository text files.
 - Read PR descriptions, changed files, reviews and CI checks.
 - Create and update issues; assign people, labels and milestones; post comments; close and reopen issues.
+- Bulk-update up to 50 issues per tool call and batch up to 20 independent reads. Each issue retains its own durable execution record and fresh role check. Writes run sequentially and stop on the first error or cancellation; the report distinguishes applied, failed/unknown, and skipped items. Earlier successful changes are retained.
 - Create and update milestones, including descriptions and due dates.
 - Create draft or ready PRs between existing branches, edit PRs, request reviews and merge against the reviewed head SHA.
 - Permanently delete issues or milestones with the separate delete role.

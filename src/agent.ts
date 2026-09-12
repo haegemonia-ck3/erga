@@ -4,7 +4,7 @@ import type { Stream } from 'openai/core/streaming';
 import { PublicError, safeError } from './config.js';
 import { Store } from './store.js';
 
-type Handler = (name: string, args: unknown, callKey: string) => Promise<unknown>;
+type Handler = (name: string, args: unknown, callKey: string, signal?: AbortSignal) => Promise<unknown>;
 type Run = { key: string; requestId: string; input: string; handle: Handler; progress: (text: string) => Promise<void> };
 export class Agent {
   private busy = new Map<string, AbortController>();
@@ -14,8 +14,8 @@ export class Agent {
   async cancel(key: string) {
     const current = this.store.conversation(key);
     if (!current) return false;
-    await this.client.beta.agents.sessions.events.create(current.session_id, { events: [{ type: 'agent.session.input.cancel' }] });
     this.busy.get(key)?.abort();
+    await this.client.beta.agents.sessions.events.create(current.session_id, { events: [{ type: 'agent.session.input.cancel' }] });
     return true;
   }
   async reset(key: string) {
@@ -56,7 +56,7 @@ export class Agent {
         let result = this.store.call(key);
         if (!result) {
           const started = performance.now();
-          try { result = { success: true, output: JSON.stringify(await run.handle(action.name, action.arguments, key)) }; }
+          try { result = { success: true, output: JSON.stringify(await run.handle(action.name, action.arguments, key, controller.signal)) }; }
           catch (error) { result = { success: false, error: safeError(error) }; }
           this.store.saveCall(key, result);
           console.info(JSON.stringify({ event: 'erga.tool.execution', duration_ms: Math.round(performance.now() - started), success: result.success }));

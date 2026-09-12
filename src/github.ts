@@ -21,6 +21,17 @@ export const changeSchema = z.discriminatedUnion('operation', [
   z.strictObject({ ...base, operation: z.literal('delete_milestone'), number }),
   z.strictObject({ ...base, operation: z.literal('delete_issue'), number }),
 ]);
+export const bulkIssueUpdateSchema = z.strictObject({
+  repository: base.repository,
+  updates: z.array(z.strictObject({ number, ...issueFields })).min(1).max(50),
+}).superRefine((batch, ctx) => {
+  const seen = new Set<number>();
+  batch.updates.forEach((update, index) => {
+    if (seen.has(update.number)) ctx.addIssue({ code: 'custom', path: ['updates', index, 'number'], message: 'An issue may appear only once per batch.' });
+    if (Object.keys(update).length === 1) ctx.addIssue({ code: 'custom', path: ['updates', index], message: 'At least one update field is required.' });
+    seen.add(update.number);
+  });
+});
 export type Change = z.infer<typeof changeSchema>;
 export const querySchema = z.strictObject({
   repository: z.string(),
