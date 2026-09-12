@@ -31,3 +31,8 @@ test('PEM variable signs verifiable JWTs with real or escaped line breaks and ov
     assert.equal(requests, 1);
   }
 });
+
+test('invalid PEM fails at startup with a helpful error that does not reveal the key', () => {
+  const c = config({ ...env, GITHUB_PRIVATE_KEY: 'invalid-secret-value' });
+  assert.throws(() => githubAuth(c), error => error instanceof Error && /could not be read or parsed/.test(error.message) && !error.message.includes('invalid-secret-value'));
+});

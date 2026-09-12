@@ -144,8 +144,9 @@ async function main() {
         const missing = Object.entries(requirements).filter(([name, flag]) => !(channel.isThread() && name === 'CreatePublicThreads') && !permissions?.has(flag)).map(([name]) => name);
         if (missing.length) throw new PublicError(`Erga needs ${missing.join(', ')} in channel ${id}.`);
       }
+      await github.query({ repository: c.repositories[0], resource: 'issues', page: 1 });
       ready = true;
-      console.log(`Erga is online. Discord access and role IDs verified. Repository: ${c.repositories.join(', ')}`);
+      console.log(`Erga is online. Discord access, role IDs, and GitHub issue access verified. Repository: ${c.repositories.join(', ')}`);
     })().catch(error => { console.error(safeError(error)); client.destroy(); process.exit(1); });
   });
   const cleanup = setInterval(() => { void agent.cleanup(c.sessionTtlHours).catch(e => console.error('Cleanup:', safeError(e))); }, 3600_000);

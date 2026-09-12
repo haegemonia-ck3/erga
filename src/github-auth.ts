@@ -1,4 +1,4 @@
-import { createSign } from 'node:crypto';
+import { createPrivateKey, createSign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Config } from './config.js';
 import { PublicError } from './config.js';
@@ -17,7 +17,10 @@ export function githubAuth(c: Partial<Pick<Config, 'githubApp' | 'githubToken'>>
   }
   const app = c.githubApp;
   if (!/^\d+$/.test(app.installationId)) throw new PublicError('GITHUB_INSTALLATION_ID must be numeric.');
-  const key = readGitHubPrivateKey(app);
+  let key: ReturnType<typeof createPrivateKey>;
+  try { key = createPrivateKey(readGitHubPrivateKey(app)); }
+  catch { throw new PublicError('The GitHub App private key could not be read or parsed. Set GITHUB_PRIVATE_KEY to the complete PEM contents, including BEGIN/END lines and line breaks, or check GITHUB_PRIVATE_KEY_PATH.'); }
+  if (key.asymmetricKeyType !== 'rsa') throw new PublicError('The GitHub App private key must be an RSA PEM key.');
   let cached: { token: string; expires: number } | undefined;
   let inflight: Promise<string> | undefined;
   const refresh = async () => {
