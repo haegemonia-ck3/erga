@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 const csv = (s: string | undefined) => (s ?? '').split(',').map(v => v.trim()).filter(Boolean);
 const snowflake = z.string().regex(/^\d{17,20}$/, 'Expected a Discord ID (enable Developer Mode → Copy ID)');
+export type GitHubAppConfig = { appId: string; installationId: string; privateKey?: string; privateKeyPath?: string };
 export function config(env = process.env) {
   const required = (key: string) => {
     const value = env[key]?.trim();
@@ -10,7 +11,8 @@ export function config(env = process.env) {
   };
   const positive = (key: string, fallback: number, max: number) => z.coerce.number().int().min(1).max(max).parse(env[key] || fallback);
   const roles = (key: string) => z.array(z.union([snowflake, z.literal('everyone')])).parse(csv(env[key]));
-  const app = env.GITHUB_APP_ID ? { appId: required('GITHUB_APP_ID'), installationId: required('GITHUB_INSTALLATION_ID'), privateKeyPath: required('GITHUB_PRIVATE_KEY_PATH') } : undefined;
+  const app: GitHubAppConfig | undefined = env.GITHUB_APP_ID ? { appId: required('GITHUB_APP_ID'), installationId: required('GITHUB_INSTALLATION_ID'), privateKey: env.GITHUB_PRIVATE_KEY?.trim() || undefined, privateKeyPath: env.GITHUB_PRIVATE_KEY_PATH?.trim() || undefined } : undefined;
+  if (app && !app.privateKey && !app.privateKeyPath) throw new PublicError('Set GITHUB_PRIVATE_KEY to the PEM contents, or GITHUB_PRIVATE_KEY_PATH to a local PEM file.');
   return {
     openaiKey: required('OPENAI_API_KEY'), model: env.OPENAI_MODEL || 'gpt-5.6-luna',
     discordToken: required('DISCORD_TOKEN'), applicationId: snowflake.parse(required('DISCORD_APPLICATION_ID')),

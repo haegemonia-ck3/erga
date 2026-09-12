@@ -2,15 +2,17 @@ import { createSign } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { PublicError, safeError } from './config.js';
 
+import { readGitHubPrivateKey } from './github-auth.js';
+
 async function discover() {
   const appId = process.env.GITHUB_APP_ID;
   const keyPath = process.env.GITHUB_PRIVATE_KEY_PATH;
   const repository = process.env.GITHUB_REPOSITORIES?.split(',')[0];
-  if (!appId || !keyPath || !repository || !/^[\w.-]+\/[\w.-]+$/.test(repository)) throw new PublicError('Set GITHUB_APP_ID, GITHUB_PRIVATE_KEY_PATH and GITHUB_REPOSITORIES first.');
+  if (!appId || !repository || !/^[\w.-]+\/[\w.-]+$/.test(repository)) throw new PublicError('Set GITHUB_APP_ID, a GitHub private key, and GITHUB_REPOSITORIES first.');
   const encode = (v: unknown) => Buffer.from(JSON.stringify(v)).toString('base64url');
   const now = Math.floor(Date.now() / 1000);
   const input = `${encode({ alg: 'RS256', typ: 'JWT' })}.${encode({ iss: appId, iat: now - 60, exp: now + 540 })}`;
-  const jwt = input + '.' + createSign('RSA-SHA256').update(input).sign(readFileSync(keyPath), 'base64url');
+  const jwt = input + '.' + createSign('RSA-SHA256').update(input).sign(readGitHubPrivateKey({ privateKey: process.env.GITHUB_PRIVATE_KEY, privateKeyPath: keyPath }), 'base64url');
   const response = await fetch(`https://api.github.com/repos/${repository}/installation`, { headers: { Authorization: `Bearer ${jwt}`, Accept: 'application/vnd.github+json', 'User-Agent': 'Erga-Hegemonia' }, redirect: 'error', signal: AbortSignal.timeout(20_000) });
   if (!response.ok) throw new PublicError(`Installation lookup failed (HTTP ${response.status}). Check the App ID, PEM, and repository installation.`);
   const installation = await response.json() as { id: number; permissions: Record<string, string> };

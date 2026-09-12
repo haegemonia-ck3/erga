@@ -48,7 +48,9 @@ Use comma-separated Discord role IDs. `everyone` grants a tier to every member w
 
 ### GitHub App
 
-Erga supports the existing GitHub App. Set `GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, and `GITHUB_PRIVATE_KEY_PATH` to the downloaded PEM’s local path. Keep the PEM outside source control. Installation tokens refresh automatically.
+Erga supports the existing GitHub App. Set `GITHUB_APP_ID` and `GITHUB_INSTALLATION_ID`, then supply either `GITHUB_PRIVATE_KEY` with the full PEM contents or `GITHUB_PRIVATE_KEY_PATH` with the downloaded PEM’s local path. The contents variable takes precedence when both are set; an empty contents variable falls back to the file. Installation tokens refresh automatically.
+
+For Railway, add `GITHUB_PRIVATE_KEY` as a secret service variable and paste the entire PEM, including its BEGIN/END lines. Actual line breaks and literal `\n` escapes are supported. No PEM file or path is needed on Railway. Keep key files and secret variable values outside source control.
 
 If the installation ID is unknown, configure the App ID, key path and repository first, then run:
 

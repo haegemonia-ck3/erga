@@ -3,6 +3,13 @@ import { readFileSync } from 'node:fs';
 import type { Config } from './config.js';
 import { PublicError } from './config.js';
 
+export function readGitHubPrivateKey(app: { privateKey?: string; privateKeyPath?: string }): string {
+  // Accept both multiline secrets and literal newline escapes from env editors.
+  if (app.privateKey?.trim()) return app.privateKey.trim().replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
+  if (app.privateKeyPath?.trim()) return readFileSync(app.privateKeyPath.trim(), 'utf8');
+  throw new PublicError('Set GITHUB_PRIVATE_KEY or GITHUB_PRIVATE_KEY_PATH.');
+}
+
 export function githubAuth(c: Partial<Pick<Config, 'githubApp' | 'githubToken'>>, request: typeof fetch = fetch): () => Promise<string> {
   if (!c.githubApp) {
     if (!c.githubToken) throw new PublicError('Configure a GitHub App or GITHUB_TOKEN.');
@@ -10,7 +17,7 @@ export function githubAuth(c: Partial<Pick<Config, 'githubApp' | 'githubToken'>>
   }
   const app = c.githubApp;
   if (!/^\d+$/.test(app.installationId)) throw new PublicError('GITHUB_INSTALLATION_ID must be numeric.');
-  const key = readFileSync(app.privateKeyPath, 'utf8');
+  const key = readGitHubPrivateKey(app);
   let cached: { token: string; expires: number } | undefined;
   let inflight: Promise<string> | undefined;
   const refresh = async () => {

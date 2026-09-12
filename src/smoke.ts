@@ -33,7 +33,7 @@ async function smoke() {
     }
     store.close();
   }
-  const gh = new GitHub(githubAuth({ githubApp: { appId: process.env.GITHUB_APP_ID!, installationId: process.env.GITHUB_INSTALLATION_ID!, privateKeyPath: process.env.GITHUB_PRIVATE_KEY_PATH! } }), process.env.GITHUB_REPOSITORIES!.split(','));
+  const gh = new GitHub(githubAuth({ githubApp: { appId: process.env.GITHUB_APP_ID!, installationId: process.env.GITHUB_INSTALLATION_ID!, privateKey: process.env.GITHUB_PRIVATE_KEY, privateKeyPath: process.env.GITHUB_PRIVATE_KEY_PATH } }), process.env.GITHUB_REPOSITORIES!.split(','));
   const repo = gh.repositories[0]!;
   await gh.api(repo, '');
   await gh.query({ repository: repo, resource: 'issues' });
