@@ -44,7 +44,7 @@ export class Changes {
       try {
         const actor = await refreshActor();
         if (signal?.aborted) { results.push({ number: update.number, status: 'skipped' }); stopped = true; continue; }
-        const result = await this.execute({ ...update, operation: 'update_issue', repository: batch.repository }, actor, itemKey);
+        const result = await this.execute({ ...update, operation: 'issue_field_values' in update ? 'update_issue_fields' : 'update_issue', repository: batch.repository }, actor, itemKey);
         results.push({ number: update.number, ...result });
       } catch (error) {
         const id = createHash('sha256').update(itemKey).digest('hex').slice(0, 24);

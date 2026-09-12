@@ -6,11 +6,13 @@ const title = z.string().min(1).max(256);
 const body = z.string().max(20000);
 const names = z.array(z.string().min(1).max(100)).max(30);
 const base = { repository: z.string().min(3) };
+const customFieldValues = z.array(z.strictObject({ field_id: number, value: z.union([z.string().max(20000), z.number(), z.array(z.string().min(1).max(100)).max(30)]) })).min(1).max(30).refine(values => new Set(values.map(v => v.field_id)).size === values.length, 'Each field may appear only once.');
 const issueFields = { title: title.optional(), body: body.optional(), state: z.enum(['open', 'closed']).optional(), labels: names.optional(), assignees: names.optional(), milestone: number.nullable().optional() };
 const milestoneFields = { title: title.optional(), description: body.optional(), state: z.enum(['open', 'closed']).optional(), due_on: z.iso.datetime().nullable().optional() };
 export const changeSchema = z.discriminatedUnion('operation', [
   z.strictObject({ ...base, operation: z.literal('create_issue'), title, body, labels: names.optional(), assignees: names.optional(), milestone: number.nullable().optional() }),
   z.strictObject({ ...base, operation: z.literal('update_issue'), number, ...issueFields }),
+  z.strictObject({ ...base, operation: z.literal('update_issue_fields'), number, issue_field_values: customFieldValues }),
   z.strictObject({ ...base, operation: z.literal('comment'), number, body: body.min(1) }),
   z.strictObject({ ...base, operation: z.literal('create_milestone'), ...milestoneFields, title }),
   z.strictObject({ ...base, operation: z.literal('update_milestone'), number, ...milestoneFields }),
@@ -23,7 +25,7 @@ export const changeSchema = z.discriminatedUnion('operation', [
 ]);
 export const bulkIssueUpdateSchema = z.strictObject({
   repository: base.repository,
-  updates: z.array(z.strictObject({ number, ...issueFields })).min(1).max(50),
+  updates: z.array(z.union([z.strictObject({ number, ...issueFields }), z.strictObject({ number, issue_field_values: customFieldValues })])).min(1).max(50),
 }).superRefine((batch, ctx) => {
   const seen = new Set<number>();
   batch.updates.forEach((update, index) => {
@@ -54,11 +56,11 @@ export class GitHub {
     if (!matched) throw new PublicError('That repository is outside Erga’s configured repository list.');
     return matched;
   }
-  async api(repository: string, path: string, method = 'GET', data?: unknown) {
+  async api(repository: string, path: string, method = 'GET', data?: unknown, apiVersion = '2022-11-28') {
     const repo = this.repo(repository);
     const response = await this.request(`https://api.github.com/repos/${repo}${path}`, {
       method, redirect: 'error', signal: AbortSignal.timeout(20_000),
-      headers: await this.headers(),
+      headers: { ...await this.headers(), 'X-GitHub-Api-Version': apiVersion },
       ...(data ? { body: JSON.stringify(data) } : {}),
     });
     if (!response.ok) throw new GitHubError(response.status);
@@ -117,6 +119,20 @@ export class GitHub {
     delete data.number;
     let path: string, method: string;
     switch (operation) {
+      case 'update_issue_fields': {
+        // POST updates specified fields without replacing unrelated custom values.
+        const values = await this.api(repository, '/issues/' + num + '/issue-field-values', 'POST', { issue_field_values: c.issue_field_values }, '2026-03-10');
+        const confirmed = Array.isArray(values) && c.issue_field_values.every(expected => {
+          const actual = values.find((v: any) => v.issue_field_id === expected.field_id);
+          if (!actual) return false;
+          const value = actual.data_type === 'single_select' ? actual.single_select_option?.name : actual.data_type === 'multi_select' ? actual.multi_select_options?.map((v: any) => v.name) : actual.value;
+          return Array.isArray(expected.value) && Array.isArray(value)
+            ? JSON.stringify([...expected.value].sort()) === JSON.stringify([...value].sort())
+            : value === expected.value;
+        });
+        if (!confirmed) throw new PublicError('GitHub did not confirm the requested custom field values. Check the issue before retrying; the write may have succeeded.');
+        return { number: num, html_url: 'https://github.com/' + repository + '/issues/' + num, issue_field_values: compact(values) };
+      }
       case 'delete_issue': {
         const issue = await this.api(repository, `/issues/${num}`);
         if (issue.pull_request) throw new PublicError('Pull requests cannot be deleted with this operation.');
