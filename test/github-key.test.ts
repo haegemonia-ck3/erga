@@ -4,7 +4,7 @@ import { generateKeyPairSync, createVerify } from 'node:crypto';
 import { config } from '../src/config.js';
 import { githubAuth, readGitHubPrivateKey } from '../src/github-auth.js';
 
-const env = { OPENAI_API_KEY: 'test', DISCORD_TOKEN: 'test', DISCORD_APPLICATION_ID: '1547654227881365524', DISCORD_GUILD_ID: '841238630743146496', DISCORD_CHANNEL_IDS: '844652195252273192', GITHUB_APP_ID: '1', GITHUB_INSTALLATION_ID: '2', GITHUB_REPOSITORIES: 'team/mod' };
+const env = { GEMINI_API_KEY: 'test', DISCORD_TOKEN: 'test', DISCORD_APPLICATION_ID: '1547654227881365524', DISCORD_GUILD_ID: '841238630743146496', DISCORD_CHANNEL_IDS: '844652195252273192', GITHUB_APP_ID: '1', GITHUB_INSTALLATION_ID: '2', GITHUB_REPOSITORIES: 'team/mod' };
 
 test('GitHub App config accepts a contents variable without a local file and rejects a missing key', () => {
   assert.equal(config({ ...env, GITHUB_PRIVATE_KEY: 'example' }).githubApp?.privateKey, 'example');

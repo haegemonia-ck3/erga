@@ -1,4 +1,4 @@
-import OpenAI from 'openai';
+import { createModel } from './model.js';
 import { Client, Events, GatewayIntentBits, MessageFlags, ChannelType, PermissionFlagsBits, type Guild, type TextChannel, type ThreadChannel } from 'discord.js';
 import { config, mayRead, mayWrite, safeError, PublicError, type Actor } from './config.js';
 import { Store } from './store.js';
@@ -15,7 +15,8 @@ async function main() {
   const store = new Store(c.databasePath);
   const github = new GitHub(githubAuth(c), c.repositories);
   const changes = new Changes(c, store, github);
-  const agent = new Agent(new OpenAI({ apiKey: c.openaiKey, maxRetries: 0, timeout: 30_000 }), store, {
+  const agent = new Agent(createModel(c), store, {
+    provider: c.provider, maxSteps: c.maxModelSteps,
     model: c.model, instructions: instructions(c.repositories), tools: toolDefinitions,
     timeoutSeconds: c.turnTimeoutSeconds, maxActive: c.maxActiveTurns,
   });
@@ -51,7 +52,7 @@ async function main() {
           }
         },
       }, requestId);
-      const text = await agent.run({ key: keyFor(actor), requestId,
+      const text = await agent.run({ key: keyFor(actor), requestId, contextProvided: true,
         input: requestWithContext(actor.userId, input, requestId, history),
         handle: toolHandler(github, changes, {
           actor,
@@ -149,7 +150,7 @@ async function main() {
       }
       await github.query({ repository: c.repositories[0], resource: 'issues', page: 1 });
       ready = true;
-      console.log(`Erga is online. Discord access, role IDs, and GitHub issue access verified. Repository: ${c.repositories.join(', ')}`);
+      console.log(`Erga is online. Discord access, role IDs, and GitHub issue access verified. Model: ${c.provider}/${c.model}. Repository: ${c.repositories.join(', ')}`);
     })().catch(error => { console.error(safeError(error)); client.destroy(); process.exit(1); });
   });
   const cleanup = setInterval(() => { void agent.cleanup(c.sessionTtlHours).catch(e => console.error('Cleanup:', safeError(e))); }, 3600_000);

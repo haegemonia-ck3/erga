@@ -29,7 +29,7 @@ test('roles inherit lower tiers, stay scoped to guild and channels, and empty po
   assert.equal(mayRead({ ...policy, readRoleIds: [], writeRoleIds: [], deleteRoleIds: [] }, actor('reader')), false);
 });
 test('configuration fails closed and supports GitHub App without PAT', () => {
-  const env = { OPENAI_API_KEY: 'test', DISCORD_TOKEN: 'test', DISCORD_APPLICATION_ID: '1547654227881365524', DISCORD_GUILD_ID: '841238630743146496', DISCORD_CHANNEL_IDS: '844652195252273192', GITHUB_APP_ID: '1', GITHUB_INSTALLATION_ID: '2', GITHUB_PRIVATE_KEY_PATH: 'test.pem', GITHUB_REPOSITORIES: repository };
+  const env = { GEMINI_API_KEY: 'test', DISCORD_TOKEN: 'test', DISCORD_APPLICATION_ID: '1547654227881365524', DISCORD_GUILD_ID: '841238630743146496', DISCORD_CHANNEL_IDS: '844652195252273192', GITHUB_APP_ID: '1', GITHUB_INSTALLATION_ID: '2', GITHUB_PRIVATE_KEY_PATH: 'test.pem', GITHUB_REPOSITORIES: repository };
   const c = config(env);
   assert.deepEqual(c.writeRoleIds, []);
   assert.equal(c.githubToken, undefined);
