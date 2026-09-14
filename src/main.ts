@@ -1,5 +1,6 @@
+import { isConversationChannel as usable, isConfiguredChannel, requiredChannelPermissions } from './discord-access.js';
 import { createModel } from './model.js';
-import { Client, Events, GatewayIntentBits, MessageFlags, ChannelType, PermissionFlagsBits, type Guild, type TextChannel, type ThreadChannel } from 'discord.js';
+import { Client, Events, GatewayIntentBits, MessageFlags, ChannelType, type Guild, type TextChannel, type ThreadChannel } from 'discord.js';
 import { config, mayRead, mayWrite, safeError, PublicError, type Actor } from './config.js';
 import { Store } from './store.js';
 import { GitHub } from './github.js';
@@ -74,7 +75,6 @@ async function main() {
       await progress?.edit({ content: message, allowedMentions: noMentions }).catch(() => undefined);
     } finally { inFlight.delete(channel.id); }
   }
-  const usable = (channel: unknown): channel is TextChannel | ThreadChannel => !!channel && typeof channel === 'object' && 'type' in channel && [ChannelType.GuildText, ChannelType.PublicThread, ChannelType.PrivateThread, ChannelType.AnnouncementThread].includes(channel.type as number);
   client.on(Events.MessageCreate, message => {
     void (async () => {
       if (!ready || !message.guild || message.author.bot || message.webhookId || !usable(message.channel)) return;
@@ -140,12 +140,11 @@ async function main() {
       for (const id of [...c.readRoleIds, ...c.writeRoleIds, ...c.deleteRoleIds]) {
         if (id !== 'everyone' && !roles.has(id)) throw new PublicError(`Configured role ${id} does not exist in this Discord server.`);
       }
-      const requirements = { ViewChannel: PermissionFlagsBits.ViewChannel, SendMessages: PermissionFlagsBits.SendMessages, ReadMessageHistory: PermissionFlagsBits.ReadMessageHistory, CreatePublicThreads: PermissionFlagsBits.CreatePublicThreads, SendMessagesInThreads: PermissionFlagsBits.SendMessagesInThreads, AttachFiles: PermissionFlagsBits.AttachFiles, EmbedLinks: PermissionFlagsBits.EmbedLinks };
       for (const id of c.channelIds) {
         const channel = await guild.channels.fetch(id);
-        if (!channel || !usable(channel)) throw new PublicError(`Configured channel ${id} must be a server text channel or thread.`);
+        if (!isConfiguredChannel(channel)) throw new PublicError(`Configured channel ${id} must be a server text channel, forum, or thread.`);
         const permissions = channel.permissionsFor(bot);
-        const missing = Object.entries(requirements).filter(([name, flag]) => !(channel.isThread() && name === 'CreatePublicThreads') && !permissions?.has(flag)).map(([name]) => name);
+        const missing = Object.entries(requiredChannelPermissions(channel)).filter(([, flag]) => !permissions?.has(flag)).map(([name]) => name);
         if (missing.length) throw new PublicError(`Erga needs ${missing.join(', ')} in channel ${id}.`);
       }
       await github.query({ repository: c.repositories[0], resource: 'issues', page: 1 });
